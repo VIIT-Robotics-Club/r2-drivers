@@ -8,7 +8,7 @@
 
 #define LUNA_COUNT 4
 #define DEF_LUNA_SDA GPIO_NUM_21
-#define DEF_LUNA_SCL GPIO_NUM_22
+#define DEF_LUNA_SCL GPIO_NUM_21
 
 
 #include "I2Cbus.hpp"
