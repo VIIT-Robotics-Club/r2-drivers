@@ -38,6 +38,7 @@ public:
 private:
 
 
+    static QueueHandle_t m_urosAccess;
     static void executorTask(void* param);
 
     rcl_allocator_t allocator;

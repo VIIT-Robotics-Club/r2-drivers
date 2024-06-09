@@ -10,11 +10,15 @@
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Continuing.\n",__LINE__,(int)temp_rc);}}
 
 
+QueueHandle_t urosHandler::m_urosAccess;
 
 bool isUrosNetworkInit = false;
 
 urosHandler::urosHandler(std::string nodeName){
-    
+
+    // create mutex for acccess to micro ros methods
+    if(!m_urosAccess) m_urosAccess = xSemaphoreCreateMutex();
+
     if(!isUrosNetworkInit) {
         ESP_ERROR_CHECK(uros_network_interface_initialize());
         isUrosNetworkInit = true;
@@ -70,6 +74,8 @@ void urosHandler::executorTask(void *param){
     rcl_node_t* node = elems->at(0)->node;
 
     
+    // hold mutex while calling uros methods
+    xSemaphoreTake(m_urosAccess, portMAX_DELAY);
     rclc_executor_t executor = rclc_executor_get_zero_initialized_executor();
 	RCCHECK(rclc_executor_init(&executor, &support->context, 2, alloc));
 
@@ -81,6 +87,8 @@ void urosHandler::executorTask(void *param){
 
         elem->init();
     } 
+
+    xSemaphoreGive(m_urosAccess);
     
     rclc_executor_spin(&executor);
     vTaskDelete(NULL);
