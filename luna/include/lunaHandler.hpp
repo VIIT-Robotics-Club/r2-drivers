@@ -3,13 +3,11 @@
 #include "esp_log.h"
 
 // Header guard to prevent multiple inclusion
-#ifndef TFLUNA_H
-#define TFLUNA_H
+#ifndef LUNA_HANDLER_HPP
+#define LUNA_HANDLER_HPP
 
-#define LUNA_COUNT 4
-#define DEF_LUNA_SDA GPIO_NUM_21
-#define DEF_LUNA_SCL GPIO_NUM_21
 
+#define MAX_LUNA_COUNT 10
 
 #include "I2Cbus.hpp"
 
@@ -24,7 +22,8 @@
 class lunaHandler {
 public:
 
-    uint16_t distances[LUNA_COUNT] = {0};
+    unsigned int count = MAX_LUNA_COUNT;
+    uint16_t distances[MAX_LUNA_COUNT] = {0};
 
     /**
      * @brief Construct a new luna Handler object
@@ -34,7 +33,7 @@ public:
      * @param addresses pass an array of luna I2c addresses
      * @param count number of addresses in array
      */
-    lunaHandler(gpio_num_t SCL = DEF_LUNA_SCL, gpio_num_t SDA = DEF_LUNA_SDA, uint8_t* addresses = DEF_LUNA_ADDRESS, size_t count = LUNA_COUNT);
+    lunaHandler(gpio_num_t SCL, gpio_num_t SDA, uint8_t* addresses, size_t count);
 
 
     /**
@@ -55,8 +54,7 @@ public:
 private:
     i2cbus::I2C i2c; // I2C interface object
     
-    uint8_t addresses[LUNA_COUNT];
-    static uint8_t DEF_LUNA_ADDRESS[4];
+    uint8_t addresses[MAX_LUNA_COUNT];
 };
 
-#endif // TFLUNA_H
+#endif // LUNA_HANDLER_HPP
