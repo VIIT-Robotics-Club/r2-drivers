@@ -11,9 +11,12 @@
 #include "urosElement.hpp"
 
 
+#ifndef UROS_OVER_USB
+#define UROS_OVER_USB 0
+#endif
+
 /**
  * @brief urosHandler to manage micro ros initialization
- * 
  */
 class urosHandler {
 
@@ -23,6 +26,7 @@ public:
      * @brief Construct a new uros Handler object
      * 
      * @param node_name ros2 node name
+     * @param usb use USB for communication
      */
     urosHandler(std::string node_name = "uros_node");
 
@@ -49,4 +53,4 @@ private:
 
 
 
-#endif UROS_HANDLER_HPP
+#endif // UROS_HANDLER_HPP
