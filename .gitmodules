@@ -12,3 +12,9 @@
 [submodule "qmd"]
 	path = qmd
 	url = https://github.com/shvass/qmd.git
+[submodule "MPUdriver"]
+	path = MPUdriver
+	url = https://github.com/natanaeljr/esp32-MPU-driver.git
+[submodule "I2Cbus"]
+	path = I2Cbus
+	url = https://github.com/natanaeljr/esp32-I2Cbus.git
