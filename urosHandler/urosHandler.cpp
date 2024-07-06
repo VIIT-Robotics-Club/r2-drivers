@@ -3,14 +3,20 @@
 #include <freertos/task.h>
 #include <esp_log.h>
 
-#include <tinyusb.h>
-#include <tusb_cdc_acm.h>
-#include <tusb_console.h>
+// #include <tinyusb.h>
+// #include <tusb_cdc_acm.h>
+// #include <tusb_console.h>
 
 #include <rmw_microxrcedds_c/config.h>
 #include <uros_network_interfaces.h>
 #include <rmw_microros/rmw_microros.h>
 #include <rmw_microros/custom_transport.h>
+
+#include <uxr/client/transport.h>
+
+#include <driver/uart.h>
+#include <driver/gpio.h>
+
 
 
 #define TAG "urosHandler"
@@ -25,12 +31,14 @@ QueueHandle_t urosHandler::m_urosAccess;
 bool isUsbInit = false;
 bool isUrosInterfaceInit = false;
 
-void tinyusb_rx_callback(int itf, cdcacm_event_t *event);
+// void tinyusb_rx_callback(int itf, cdcacm_event_t *event);
 bool esp32_usb_open(struct uxrCustomTransport * transport);
 bool esp32_usb_close(struct uxrCustomTransport * transport);
 size_t esp32_usb_write(struct uxrCustomTransport* transport, const uint8_t * buf, size_t len, uint8_t * err);
 size_t esp32_usb_read(struct uxrCustomTransport* transport, uint8_t* buf, size_t len, int timeout, uint8_t* err);
 
+
+static uart_port_t uart_port = UART_NUM_0;
 
 urosHandler::urosHandler(std::string nodeName){
 
@@ -45,7 +53,7 @@ urosHandler::urosHandler(std::string nodeName){
     // setup custom transport for usb here
     rmw_uros_set_custom_transport(
         true,
-        (void *) this,
+        (void *) &uart_port,
         esp32_usb_open,
         esp32_usb_close,
         esp32_usb_write,
@@ -73,12 +81,12 @@ urosHandler::urosHandler(std::string nodeName){
         if(ret == RMW_RET_OK) waitAutoDiscovery = false;
         else if(ret == RMW_RET_TIMEOUT) waitAutoDiscovery = true;
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
     
     rmw_uros_sync_session(1000);
 
-	RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
+	RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
 
 	// create node
 	RCCHECK(rclc_node_init_default(&node, nodeName.c_str(), "", &support));
@@ -123,68 +131,129 @@ void urosHandler::executorTask(void *param){
 
     xSemaphoreGive(m_urosAccess);
     
-    // rclc_executor_spin(&executor);
-    rclc_executor_spin_period(&executor, 1000);
+    rclc_executor_spin(&executor);
+    // rclc_executor_spin_period(&executor, 1000);
     vTaskDelete(NULL);
 }
 
 
 
-bool esp32_usb_open(uxrCustomTransport *transport){ 
-    if(isUsbInit) return isUsbInit;
-    ESP_LOGI(TAG, "USB initialization successful");
+// bool esp32_usb_open(uxrCustomTransport *transport){ 
+//     if(isUsbInit) return isUsbInit;
+//     ESP_LOGI(TAG, "USB initialization successful");
 
-    const tinyusb_config_t tusb_cfg = {
-        .device_descriptor = NULL,
-        .string_descriptor = NULL,
-        .external_phy = false,
-#if (TUD_OPT_HIGH_SPEED)
-        .fs_configuration_descriptor = NULL,
-        .hs_configuration_descriptor = NULL,
-        .qualifier_descriptor = NULL,
-#endif
+//     const tinyusb_config_t tusb_cfg = {
+//         .device_descriptor = NULL,
+//         .string_descriptor = NULL,
+//         .external_phy = false,
+// #if (TUD_OPT_HIGH_SPEED)
+//         .fs_configuration_descriptor = NULL,
+//         .hs_configuration_descriptor = NULL,
+//         .qualifier_descriptor = NULL,
+// #endif
+//     };
+
+//     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+
+//     tinyusb_config_cdcacm_t uros_acm = {
+//         .usb_dev = TINYUSB_USBDEV_0,
+//         .cdc_port = TINYUSB_CDC_ACM_1,
+//         .callback_rx = tinyusb_rx_callback
+//     };
+
+//     tinyusb_config_cdcacm_t logger_acm = {
+//         .usb_dev = TINYUSB_USBDEV_0,
+//         .cdc_port = TINYUSB_CDC_ACM_0,
+//     }; 
+
+//     ESP_ERROR_CHECK(tusb_cdc_acm_init(&uros_acm));
+//     ESP_ERROR_CHECK(tusb_cdc_acm_init(&logger_acm));
+
+//     ESP_LOGI(TAG, "USB initialization DONE");
+//     esp_tusb_init_console(TINYUSB_CDC_ACM_0); // log to usb
+//     return isUsbInit = true;
+// };
+
+
+
+// size_t esp32_usb_write(uxrCustomTransport *transport, const uint8_t *buf, size_t len, uint8_t *err)
+// {
+//     tinyusb_cdcacm_write_queue((tinyusb_cdcacm_itf_t) TINYUSB_CDC_ACM_1, buf, len);
+//     tinyusb_cdcacm_write_flush((tinyusb_cdcacm_itf_t) TINYUSB_CDC_ACM_1, 0);
+//     return len;
+// }
+
+
+// void tinyusb_rx_callback(int itf, cdcacm_event_t *event){}
+
+
+// size_t esp32_usb_read(uxrCustomTransport *transport, uint8_t *buf, size_t len, int timeout, uint8_t *err){
+//     size_t rx_size = 0;
+//     esp_err_t ret = tinyusb_cdcacm_read(TINYUSB_CDC_ACM_1, buf, len, &rx_size);
+//     return rx_size;
+// }
+
+// bool esp32_usb_close(struct uxrCustomTransport * transport){
+//     return true;
+// }
+
+
+
+
+
+
+
+
+// #define UART_TXD  (GPIO_NUM_10)
+// #define UART_RXD  (GPIO_NUM_11)
+
+
+#define UART_TXD  (CONFIG_MICROROS_UART_TXD)
+#define UART_RXD  (CONFIG_MICROROS_UART_RXD)
+#define UART_RTS  (CONFIG_MICROROS_UART_RTS)
+#define UART_CTS  (CONFIG_MICROROS_UART_CTS)
+
+// --- micro-ROS Transports ---
+#define UART_BUFFER_SIZE (512)
+
+bool esp32_usb_open(struct uxrCustomTransport * transport){
+    // uart_port_t uart_port = *(uart_port_t*) transport->args;
+
+    uart_config_t uart_config = {
+        .baud_rate = 460800,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
     };
 
-    ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+    if (uart_param_config(uart_port, &uart_config) == ESP_FAIL) {
+        return false;
+    }
+    if (uart_set_pin(uart_port, UART_TXD, UART_RXD, UART_RTS, UART_CTS) == ESP_FAIL) {
+        return false;
+    }
+    if (uart_driver_install(uart_port, UART_BUFFER_SIZE * 2, 0, 0, NULL, 0) == ESP_FAIL) {
+        return false;
+    }
 
-    tinyusb_config_cdcacm_t uros_acm = {
-        .usb_dev = TINYUSB_USBDEV_0,
-        .cdc_port = TINYUSB_CDC_ACM_1,
-        .callback_rx = tinyusb_rx_callback
-    };
-
-    tinyusb_config_cdcacm_t logger_acm = {
-        .usb_dev = TINYUSB_USBDEV_0,
-        .cdc_port = TINYUSB_CDC_ACM_0,
-    }; 
-
-    ESP_ERROR_CHECK(tusb_cdc_acm_init(&uros_acm));
-    ESP_ERROR_CHECK(tusb_cdc_acm_init(&logger_acm));
-
-    ESP_LOGI(TAG, "USB initialization DONE");
-    esp_tusb_init_console(TINYUSB_CDC_ACM_0); // log to usb
-    return isUsbInit = true;
-};
-
-
-
-size_t esp32_usb_write(uxrCustomTransport *transport, const uint8_t *buf, size_t len, uint8_t *err)
-{
-    tinyusb_cdcacm_write_queue((tinyusb_cdcacm_itf_t) TINYUSB_CDC_ACM_1, buf, len);
-    tinyusb_cdcacm_write_flush((tinyusb_cdcacm_itf_t) TINYUSB_CDC_ACM_1, 0);
-    return len;
-}
-
-
-void tinyusb_rx_callback(int itf, cdcacm_event_t *event){}
-
-
-size_t esp32_usb_read(uxrCustomTransport *transport, uint8_t *buf, size_t len, int timeout, uint8_t *err){
-    size_t rx_size = 0;
-    esp_err_t ret = tinyusb_cdcacm_read(TINYUSB_CDC_ACM_1, buf, len, &rx_size);
-    return rx_size;
+    return true;
 }
 
 bool esp32_usb_close(struct uxrCustomTransport * transport){
-    return true;
+    // uart_port_t uart_port = *(uart_port_t*) transport->args;
+
+    return uart_driver_delete(uart_port) == ESP_OK;
+}
+
+size_t esp32_usb_write(struct uxrCustomTransport* transport, const uint8_t * buf, size_t len, uint8_t * err){
+    // uart_port_t uart_port = *(uart_port_t*) transport->args;
+    const int txBytes = uart_write_bytes(uart_port, (const char*) buf, len);
+    return txBytes;
+}
+
+size_t esp32_usb_read(struct uxrCustomTransport* transport, uint8_t* buf, size_t len, int timeout, uint8_t* err){
+    // uart_port_t uart_port = *(uart_port_t*) transport->args;
+    const int rxBytes = uart_read_bytes(uart_port, buf, len, timeout / portTICK_PERIOD_MS);
+    return rxBytes;
 }

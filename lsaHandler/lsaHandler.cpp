@@ -4,14 +4,13 @@
 
 #include "lsaHandler.hpp"
 
-
 #define UART_BUFFER_SIZE 1024
 
 
 lsaHandler::lsaHandler(gpio_num_t TX, gpio_num_t RX, gpio_num_t en, gpio_num_t trigger) : en(en){
 
     // init uart
-    const uart_port_t uart_num = UART_NUM_2;
+    const uart_port_t uart_num = LSA_UART_PORT;
     uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -43,16 +42,19 @@ lsaHandler::lsaHandler(gpio_num_t TX, gpio_num_t RX, gpio_num_t en, gpio_num_t t
         .intr_type = GPIO_INTR_POSEDGE,
     };
 
-    gpio_isr_register(lsaTriggerIsrCallback, this, ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_EDGE, &isrHandle);
-    esp_intr_enable(isrHandle);
-
     gpio_config(&enConf);
     gpio_config(&triggerConf);
+
+    gpio_install_isr_service( ESP_INTR_FLAG_SHARED | ESP_INTR_FLAG_LOWMED);
+    gpio_isr_handler_add(trigger, lsaTriggerIsrCallback,  this);
+    gpio_intr_enable(trigger);
+
+
 }
 
 
 void lsaHandler::update(){
-    const uart_port_t uart_num = UART_NUM_2;
+    const uart_port_t uart_num = LSA_UART_PORT;
     gpio_set_level(en, 0);
     const int rxBytes = uart_read_bytes(uart_num, &value, 1, pdMS_TO_TICKS(1000));
     gpio_set_level(en, 1);
