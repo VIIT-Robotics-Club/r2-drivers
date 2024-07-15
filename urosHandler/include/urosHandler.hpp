@@ -39,7 +39,7 @@ public:
     void addThreadExecutor(std::vector<urosElement*> elements, int CPUID = PRO_CPU_NUM);
 
 
-private:
+// private:
 
 
     static QueueHandle_t m_urosAccess;

@@ -118,7 +118,7 @@ void urosHandler::executorTask(void *param){
     // hold mutex while calling uros methods
     xSemaphoreTake(m_urosAccess, portMAX_DELAY);
     rclc_executor_t executor = rclc_executor_get_zero_initialized_executor();
-	RCCHECK(rclc_executor_init(&executor, &support->context, 6, alloc));
+	RCCHECK(rclc_executor_init(&executor, &support->context, 15, alloc));
 
     for(auto* elem : *elems){
         elem->support = support;
